@@ -738,6 +738,7 @@ Please change KUBERNETES_MASTER, S3_BUCKET, SPARK_IMAGE
 
 ```
 export SPARK_NAMESPACE="spark-jobs"
+kubectl create ns $SPARK_NAMESPACE
 export KUBERNETES_MASTER="k8s://https://F4EE7FBA0DB4B70203DC4DFA9B39FCB7.gr7.us-east-1.eks.amazonaws.com"
 export S3_BUCKET="airbyte-eks-123456"
 export SPARK_IMAGE="public.ecr.aws/data-on-eks/spark:3.5.3-scala2.12-java17-python3-ubuntu-s3table0.1.3-iceberg1.6.1"
