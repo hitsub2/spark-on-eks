@@ -811,7 +811,55 @@ if __name__ == "__main__":
     main()
 EOL
 ```
+
+#### Create service account for spark-driver pod
+
+```
+cat > spark-sa.yaml << EOL
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark-sa
+  namespace: ${SPARK_NAMESPACE}
+---
+# Role with permissions to create and list pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-admin-role
+  namespace: ${SPARK_NAMESPACE}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "configmaps"]
+  verbs: ["create", "list", "get", "watch"]
+---
+# RoleBinding to bind the service account to the role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-admin-binding
+  namespace: ${SPARK_NAMESPACE}
+subjects:
+- kind: ServiceAccount
+  name: spark-sa
+  namespace: ${SPARK_NAMESPACE}
+roleRef:
+  kind: Role
+  name: pod-admin-role
+  apiGroup: rbac.authorization.k8s.io
+
+```
+
+```
+kubectl apply -f spark-sa.yaml
+```
+
 #### Submit spark jobs with spark-submit
+
+
+We will use secret key and access key for this examples
 
 ```
 spark-3.5.5-bin-hadoop3/bin/spark-submit \
