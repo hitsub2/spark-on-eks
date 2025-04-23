@@ -633,6 +633,11 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${CLUSTER_NAME}" # replace with your cluster name
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2 # This is changed to enable IMDS access from containers not on the host network
+    httpTokens: required
 EOF
 ```
 
