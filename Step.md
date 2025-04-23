@@ -339,6 +339,22 @@ aws iam add-role-to-instance-profile --instance-profile-name eksctlinstanceprofi
 ```
 
 
+#### Create IAM role, SQS, event bridge rules for karpenter
+
+```
+export TEMPOUT="$(mktemp)"
+export K8S_VERSION="1.32"
+export CLUSTER_NAME="spark-on-eks-demo"
+
+curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARPENTER_VERSION}"/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
+&& aws cloudformation deploy \
+  --stack-name "Karpenter-${CLUSTER_NAME}" \
+  --template-file "${TEMPOUT}" \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides "ClusterName=${CLUSTER_NAME}"
+```
+
+
 
 #### Attach EKSCTLRole to the ec2 instance(where eksctl is executed)
 
@@ -407,18 +423,6 @@ response
 aws-cli/2.16.4 Python/3.11.8 Linux/6.1.90-99.173.amzn2023.x86_64 exe/x86_64.amzn.2023
 ```
 
-
-
-#### Create IAM role, SQS, event bridge rules for karpenter
-
-```
-curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARPENTER_VERSION}"/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
-&& aws cloudformation deploy \
-  --stack-name "Karpenter-${CLUSTER_NAME}" \
-  --template-file "${TEMPOUT}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides "ClusterName=${CLUSTER_NAME}"
-```
 
 
 
