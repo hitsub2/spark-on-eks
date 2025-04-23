@@ -989,7 +989,7 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
   --conf spark.executor.memory=2g \
   --conf spark.executor.instances=2 \
   --conf spark.kubernetes.driver.node.selector.karpenter.sh/nodepool=driver-graviton \
-  --conf spark.kubernetes.executor.node.selector.karpenter.sh/nodepool=executor-arm \
+  --conf spark.kubernetes.executor.node.selector.karpenter.sh/nodepool=executor-graviton \
   --conf spark.hadoop.fs.s3a.endpoint=s3.amazonaws.com \
   --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
   --conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider \
