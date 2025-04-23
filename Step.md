@@ -1,29 +1,48 @@
-# Spark on EKS Workshop from cluster to Spark
+Spark on EKS Workshop from cluster to Spark
+
+Architecture
+
 
 Environment
 
+Infrastructure
 
+* EKS Version: 1.32
+* Region: us-east-1
+* Karpenter: 1.4
+* Spark: 3.5
+* EC2: graviton
 
-Prepare IAM for eksctl
+Operation
 
+Where the following command will be executed
 
-Preq:
+* Amazon Linux 2023
+    * tested
+* Mac
+    * not tested
 
-An IAM role that can create role, policy.
+Create Minimum IAM Role
+
+The following steps require an IAM role that can create IAM role. It will create:
+
+* IAM role for eksctl
+* Karpenter SQS
+* Karpenter Node Role
+* Karpenter Controller Policy
 
 Setting environment
 
+Please change ACCOUNT_ID, CLUSTER_NAME, AWS_REGION accordingly.
 
-```
 export ACCOUNT_ID=724853865853
 export AWS_REGION=us-east-1
 export CLUSTER_NAME="spark-on-eks-demo"
-```
 
+Create a new policy called eksALLAccess
 
-create a new policy called eksALLAccess
+Create New policy file
 
-```
 cat > eksallaccess.policy <<EOF
 {
     "Version": "2012-10-17",
@@ -63,23 +82,17 @@ cat > eksallaccess.policy <<EOF
 }
 
 EOF
-```
 
+Create the policy
 
-create the policy
-
-
-```
 aws iam create-policy \
     --policy-name EKSALLACCESSIAMPolicy \
     --policy-document file://eksallaccess.policy
-```
 
 
-reponse
+The above command successful response
 
 
-```
 {
     "Policy": {
         "PolicyName": "EKSALLACCESSIAMPolicy",
@@ -94,16 +107,13 @@ reponse
         "UpdateDate": "2025-04-22T13:11:26+00:00"
     }
 }
-```
 
+Create a new policy limitedIAMACCESS
 
+We will use this role with eksctl tool to create eks cluster.
 
-limited IAMACCESS
+Create New policy file
 
-
-
-
-```
 cat > iamlimitedaccess.policy <<EOF
 {
     "Version": "2012-10-17",
@@ -180,22 +190,15 @@ cat > iamlimitedaccess.policy <<EOF
 }
 
 EOF
-```
 
-create the iamlimited policy
+Create the policy
 
-
-
-```
 aws iam create-policy \
     --policy-name IAMLIMITEDACCESSIAMPolicy \
     --policy-document file://iamlimitedaccess.policy
-```
 
-success response:
+The above command successful response
 
-
-```
 {
     "Policy": {
         "PolicyName": "IAMLIMITEDACCESSIAMPolicy",
@@ -210,14 +213,13 @@ success response:
         "UpdateDate": "2025-04-22T13:14:58+00:00"
     }
 }
-```
 
 
-create the iam role for eksctl tools
 
-configure trust relationships
+Create the iam role for eksctl tools
 
-```
+Configure trust relationships
+
 cat > eksctltrustrelationships.policy <<EOF
 {
     "Version": "2012-10-17",
@@ -237,66 +239,43 @@ cat > eksctltrustrelationships.policy <<EOF
 }
 
 EOF
-```
 
+Create  IAM  role
 
-
-create  iam role
-
-```
 aws iam create-role \
   --role-name EKSCTLRole \
   --assume-role-policy-document file://"eksctltrustrelationships.policy"
-```
 
+Attach role policy AmazonEC2FullAccess
 
-attach role policy AmazonEC2FullAccess
-
-```
 aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess \
   --role-name EKSCTLRole
-```
 
+Attach role policy AWSCloudFormationFullAccess
 
-attach role policy AWSCloudFormationFullAccess
-
-```
 aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/AWSCloudFormationFullAccess \
   --role-name EKSCTLRole
-```
 
+Attach role policy IAMLIMITEDACCESSIAMPolicy
 
-
-attach role policy IAMLIMITEDACCESSIAMPolicy
-
-```
 aws iam attach-role-policy \
   --policy-arn arn:aws:iam::${ACCOUNT_ID}:policy/IAMLIMITEDACCESSIAMPolicy \
   --role-name EKSCTLRole
-```
 
+Attach role policy EKSALLACCESSIAMPolicy
 
-
-attach role policy EKSALLACCESSIAMPolicy
-
-```
 aws iam attach-role-policy \
   --policy-arn arn:aws:iam::${ACCOUNT_ID}:policy/EKSALLACCESSIAMPolicy \
   --role-name EKSCTLRole
-```
 
 Check if all the policy has been added
 
-
-```
 aws iam list-attached-role-policies --role-name EKSCTLRole
-```
 
 response:
 
-```
 {
     "AttachedPolicies": [
         {
@@ -317,29 +296,24 @@ response:
         }
     ]
 }
-```
 
+Create instance profile
 
-create instance profile
+We will attach this instance profile to the operation of EC2.
 
+aws iam create-instance-profile --instance-profile-name eksctlinstanceprofile 
 
-```
-`aws iam create``-``instance``-``profile ``--``instance``-``profile``-``name eksctlinstanceprofile`` `
-
-`aws iam add``-``role``-``to``-``instance``-``profile ``--``instance``-``profile``-``name eksctlinstanceprofile ``\`
-`--``role``-``name EKSCTLRole`
-```
+aws iam add-role-to-instance-profile --instance-profile-name eksctlinstanceprofile \
+--role-name EKSCTLRole
 
 
 
 Attach EKSCTLRole to the ec2 instance(where eksctl is executed)
 
-
 Create Karpenter required role, sqs, and eventbridge
 
+Set environment
 
-
-```
 export KARPENTER_NAMESPACE="kube-system"
 export KARPENTER_VERSION="1.4.0"
 export K8S_VERSION="1.32"
@@ -348,20 +322,9 @@ export CLUSTER_NAME="spark-on-eks-demo"
 export AWS_DEFAULT_REGION="us-east-1"
 export TEMPOUT="$(mktemp)"
 export ALIAS_VERSION="$(aws ssm get-parameter --name "/aws/service/eks/optimized-ami/${K8S_VERSION}/amazon-linux-2023/x86_64/standard/recommended/image_id" --query Parameter.Value | xargs aws ec2 describe-images --query 'Images[0].Name' --image-ids | sed -r 's/^.*(v[[:digit:]]+).*$/\1/')"
-curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARPENTER_VERSION}"/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
-&& aws cloudformation deploy \
-  --stack-name "Karpenter-${CLUSTER_NAME}" \
-  --template-file "${TEMPOUT}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides "ClusterName=${CLUSTER_NAME}"
-```
 
+Install eksctl
 
-install eksctl
-
-
-
-```
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
 ARCH=amd64
 PLATFORM=$(uname -s)_$ARCH
@@ -374,69 +337,54 @@ curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_ch
 tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
 
 sudo mv /tmp/eksctl /usr/local/bin
-```
-
 
 Check eksctl version
 
-
-```
 eksctl version
-```
 
 response
 
-
-```
 0.207.0
-```
 
-install or update aws cli version to 2.x
+Install or update aws cli version to 2.x
 
-
-```
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
-```
 
-check version
+Check aws cli version
 
-
-```
 aws version
-```
 
 
 response
 
-```
 aws-cli/2.16.4 Python/3.11.8 Linux/6.1.90-99.173.amzn2023.x86_64 exe/x86_64.amzn.2023
-```
 
 
-Create IAM role for karpenter
 
-setting environment
+Create IAM role, SQS, event bridge rules for karpenter
 
-```
-export KARPENTER_NAMESPACE="kube-system"
-export KARPENTER_VERSION="1.4.0"
-export K8S_VERSION="1.32"
-export AWS_PARTITION="aws"
-export CLUSTER_NAME="spark-on-eks-demo"
-export AWS_DEFAULT_REGION="us-east-1"
-export TEMPOUT="$(mktemp)"
-export ALIAS_VERSION="$(aws ssm get-parameter --name "/aws/service/eks/optimized-ami/${K8S_VERSION}/amazon-linux-2023/x86_64/standard/recommended/image_id" --query Parameter.Value | xargs aws ec2 describe-images --query 'Images[0].Name' --image-ids | sed -r 's/^.*(v[[:digit:]]+).*$/\1/')"
-```
+curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARPENTER_VERSION}"/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml  > "${TEMPOUT}" \
+&& aws cloudformation deploy \
+  --stack-name "Karpenter-${CLUSTER_NAME}" \
+  --template-file "${TEMPOUT}" \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides "ClusterName=${CLUSTER_NAME}"
 
 
-Create eks cluster with eksctl
+
+Create EKS cluster with eksctl
 
 Prepare eksctl yaml files
 
+eksctl leverage yaml files to create eks cluster which is more production-ready than aws console.
 
-```
+The yaml need to be changed accordingly:
+
+* VPC info
+* Managed node groups
+
 cat > eksctl_cluster.yaml <<EOF
 
 apiVersion: eksctl.io/v1alpha5
@@ -492,38 +440,33 @@ managedNodeGroups:
   minSize: 1
   maxSize: 10
 
-addons:
-- name: eks-pod-identity-agent
 EOF
-```
 
+Creat the cluster
 
-creat the cluster
+It will take about 20 minutes to create the cluster.
 
-```
 eksctl create cluster -f eksctl_cluster.yaml
-```
 
 
 
-prepare subnet and security group
+Install Karpenter
+
+Prepare subnet and security group
+
+Karpenter using tags to select security group and subnets for new launching EC2 instance.
 
 add tags to subnet
 
-```
 for NODEGROUP in $(aws eks list-nodegroups --cluster-name "${CLUSTER_NAME}" --query 'nodegroups' --output text); do
     aws ec2 create-tags \
         --tags "Key=karpenter.sh/discovery,Value=${CLUSTER_NAME}" \
         --resources $(aws eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" \
         --nodegroup-name "${NODEGROUP}" --query 'nodegroup.subnets' --output text )
 done
-```
-
 
 add tags to security group
 
-
-```
 NODEGROUP=$(aws eks list-nodegroups --cluster-name "${CLUSTER_NAME}" \
 --query 'nodegroups[0]' --output text)
 LAUNCH_TEMPLATE=$(aws eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" \
@@ -537,12 +480,11 @@ SECURITY_GROUPS="$(aws ec2 describe-launch-template-versions \
 aws ec2 create-tags \
 --tags "Key=karpenter.sh/discovery,Value=${CLUSTER_NAME}" \
 --resources "${SECURITY_GROUPS}"
-```
 
+Install karpenter
 
-install karpenter
+Install helm chart
 
-```
 export KARPENTER_IAM_ROLE_ARN="arn:${AWS_PARTITION}:iam::${ACCOUNT_ID}:role/${CLUSTER_NAME}-karpenter"
 helm registry logout public.ecr.aws
 
@@ -555,13 +497,13 @@ helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter --vers
 --set controller.resources.limits.cpu=1 \
 --set controller.resources.limits.memory=1Gi \
 --wait
-```
 
+Check if karpenter is up
 
+kubectl logs -f -n "${KARPENTER_NAMESPACE}" -l app.kubernetes.io/name=karpenter -c controller
 
-configure nodepool and ec2nodeclass
+Configure nodepool and ec2nodeclass
 
-```
 cat <<EOF | envsubst | kubectl apply -f -
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -612,13 +554,13 @@ spec:
     - tags:
         karpenter.sh/discovery: "${CLUSTER_NAME}" # replace with your cluster name
 EOF
-```
+
 
 
 Testing Karpenter if is ok
 
 
-```
+
 cat <<EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
@@ -651,43 +593,28 @@ EOF
 
 kubectl scale deployment inflate --replicas 5
 kubectl logs -f -n "${KARPENTER_NAMESPACE}" -l app.kubernetes.io/name=karpenter -c controller
-```
-
 
 
 
 scale down the deployment
 
-
-```
 kubectl delete deployment inflate
 kubectl logs -f -n "${KARPENTER_NAMESPACE}" -l app.kubernetes.io/name=karpenter -c controller
-```
 
 
 
 Submit Spark jobs
 
-native
+Native
 
+Install the spark-submit command
 
-
-```
 wget https://dlcdn.apache.org/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz
 du -sh spark-3.5.5-bin-hadoop3.tgz 
 tar zxvf spark-3.5.5-bin-hadoop3.tgz 
-```
 
+Create a file, and upload to s3
 
-
-spark job with Node role
-
-
-create a file, and upload to s3
-
-
-
-```
 cat > input.csv <<EOF 
 id,name,amount,date
 1,John Doe,500,2025-01-15
@@ -702,23 +629,24 @@ id,name,amount,date
 10,Ivy Robinson,300,2025-01-24
 
 EOF
-```
+
+
+
+Upload file to S3 bucket
+
 
 
 Update KUBERNETES_MASTER, S3_BUCKET
 
+Please change KUBERNETES_MASTER, S3_BUCKET, SPARK_IMAGE
 
-
-```
 export SPARK_NAMESPACE="spark-jobs"
 export KUBERNETES_MASTER="k8s://https://F4EE7FBA0DB4B70203DC4DFA9B39FCB7.gr7.us-east-1.eks.amazonaws.com"
 export S3_BUCKET="airbyte-eks-123456"
 export SPARK_IMAGE="public.ecr.aws/data-on-eks/spark:3.5.3-scala2.12-java17-python3-ubuntu-s3table0.1.3-iceberg1.6.1"
-```
 
 
 
-```
 #!/bin/bash
 # Script to submit Spark job to Amazon EKS
 
@@ -809,7 +737,32 @@ aws s3 cp local_script.py s3://${S3_BUCKET}/scripts/simple_s3_spark_job.py
   --conf spark.hadoop.fs.s3a.access.key=$(aws configure get aws_access_key_id) \
   --conf spark.hadoop.fs.s3a.secret.key=$(aws configure get aws_secret_access_key) \
   s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
-```
+
+
+
+
+Spark operator
+
+install spark operator
+
+helm repo add spark-operator https://kubeflow.github.io/spark-operator
+helm repo update
+
+install the chart
+
+helm install spark-operator spark-operator/spark-operator \
+    --namespace spark-operator --create-namespace --wait
+
+submit job via spark operator
+
+kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
+
+
+
+
+Appendix
+
+IAM Role for Service Account
 
 
 spark job with IAM role for service account
@@ -818,27 +771,10 @@ spark job with IAM role for service account
 create IAM Role for service account 
 
 
-```
 eksctl utils associate-iam-oidc-provider --cluster $CLUSTER_NAME --approve
-```
 
 
 
-```
 eksctl create iamserviceaccount --name spark-sa --namespace $SPARK_NAMESPACE --cluster $CLUSTER_NAME --role-name spark-role \
     --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --approve
-```
-
-
-
-spark operator
-
-
-
-```
-
-```
-
-
-
 
