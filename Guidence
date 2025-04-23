@@ -1,0 +1,68 @@
+# Spark on EKS Workshop from cluster to Spark
+
+## Environment
+
+### Prepare IAM for eksctl
+
+#### Prerequisites:
+- An IAM role that can create role, policy.
+
+### Setting environment
+
+```bash
+export ACCOUNT_ID=724853865853
+export AWS_REGION=us-east-1
+export CLUSTER_NAME="spark-on-eks-demo"
+```
+
+### Create a new policy called eksALLAccess
+
+```bash
+cat > eksallaccess.policy <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "eks:*",
+            "Resource": "*"
+        },
+        {
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:${ACCOUNT_ID}:parameter/aws/*",
+                "arn:aws:ssm:*::parameter/aws/*"
+            ],
+            "Effect": "Allow"
+        },
+        {
+             "Action": [
+               "kms:CreateGrant",
+               "kms:DescribeKey"
+             ],
+             "Resource": "*",
+             "Effect": "Allow"
+        },
+        {
+             "Action": [
+               "logs:PutRetentionPolicy"
+             ],
+             "Resource": "*",
+             "Effect": "Allow"
+        }        
+    ]
+}
+EOF
+```
+
+### Create the policy
+
+```bash
+aws iam create-policy \
+    --policy-name EKSALLACCESSIAMPolicy \
+    --policy-document file://eksallaccess.policy
+```
+
