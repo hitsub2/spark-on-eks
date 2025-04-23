@@ -744,14 +744,11 @@ export SPARK_IMAGE="public.ecr.aws/data-on-eks/spark:3.5.3-scala2.12-java17-pyth
 ```
 
 
+#### Create Python function file
 
 ```
-#!/bin/bash
-# Script to submit Spark job to Amazon EKS
-
-
 # Create a local copy of the script
-cat > local_script.py << 'EOL'
+cat > local_script.py << EOL
 #!/usr/bin/env python3
 """
 Simple PySpark job to read data from S3 and perform basic processing
@@ -812,12 +809,11 @@ def main():
 if __name__ == "__main__":
     main()
 EOL
+```
+#### Submit spark jobs with spark-submit
 
-# Upload Python script to S3
-aws s3 cp local_script.py s3://${S3_BUCKET}/scripts/simple_s3_spark_job.py
-
-# Submit the Spark job to Kubernetes
-~/Downloads/spark-3.5.5-bin-hadoop3/bin/spark-submit \
+```
+spark-3.5.5-bin-hadoop3/bin/spark-submit \
   --master ${KUBERNETES_MASTER} \
   --deploy-mode cluster \
   --name spark-s3-reader \
