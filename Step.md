@@ -1000,6 +1000,18 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
 ```
 
 
+You can check the nodeclaim if the mapping is right
+
+```
+Admin:~/environment $ kubectl  get nodeclaim
+NAME                      TYPE          CAPACITY    ZONE         NODE                             READY   AGE
+default-qv7dj             c6a.2xlarge   on-demand   us-east-1d   ip-192-168-20-14.ec2.internal    True    62m
+driver-graviton-czscd     c6g.large     on-demand   us-east-1c   ip-192-168-49-34.ec2.internal    True    7m
+driver-graviton-fgx2h     c6g.large     on-demand   us-east-1c   ip-192-168-56-195.ec2.internal   True    2m29s
+executor-graviton-94f9n   m6g.xlarge    on-demand   us-east-1c   ip-192-168-49-91.ec2.internal    True    67s
+
+```
+
 ### Spark operator
 
 #### install spark operator
