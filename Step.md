@@ -428,6 +428,13 @@ aws-cli/2.16.4 Python/3.11.8 Linux/6.1.90-99.173.amzn2023.x86_64 exe/x86_64.amzn
 
 ## Create EKS cluster with eksctl
 
+### Install kubectl
+
+```
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+```
+
 ### Prepare eksctl yaml files
 
 eksctl leverage yaml files to create eks cluster which is more production-ready than aws console.
