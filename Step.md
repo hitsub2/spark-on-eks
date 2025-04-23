@@ -677,6 +677,13 @@ kubectl scale deployment inflate --replicas 5
 kubectl logs -f -n "${KARPENTER_NAMESPACE}" -l app.kubernetes.io/name=karpenter -c controller
 ```
 
+#### Get nodeclaim 
+
+nodeclaim is a crd that karpenter use to manage ec2.
+
+```
+kubectl get nodeclaim
+```
 
 
 #### scale down the deployment
