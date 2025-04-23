@@ -1017,6 +1017,32 @@ executor-graviton-94f9n   m6g.xlarge    on-demand   us-east-1c   ip-192-168-49-9
 
 ```
 
+Submit spark jobs with node role
+
+```
+spark-3.5.5-bin-hadoop3/bin/spark-submit \
+  --master ${KUBERNETES_MASTER} \
+  --deploy-mode cluster \
+  --name spark-s3-reader \
+  --conf spark.kubernetes.container.image=${SPARK_IMAGE} \
+  --conf spark.kubernetes.namespace=${SPARK_NAMESPACE} \
+  --conf spark.kubernetes.driver.request.cores=1 \
+  --conf spark.kubernetes.driver.limit.cores=1 \
+  --conf spark.kubernetes.executor.request.cores=1 \
+  --conf spark.kubernetes.executor.limit.cores=1 \
+  --conf spark.driver.memory=2g \
+  --conf spark.executor.memory=2g \
+  --conf spark.executor.instances=2 \
+  --conf spark.kubernetes.driver.node.selector.karpenter.sh/nodepool=driver-graviton \
+  --conf spark.kubernetes.executor.node.selector.karpenter.sh/nodepool=executor-graviton \
+  --conf spark.hadoop.fs.s3a.endpoint=s3.amazonaws.com \
+  --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider \
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.InstanceProfileCredentialsProvider \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa \
+  s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
+```
+
 ### Spark operator
 
 #### install spark operator
