@@ -332,10 +332,10 @@ response:
 We will attach this instance profile to the operation of EC2.
 
 ```
-`aws iam create``-``instance``-``profile ``--``instance``-``profile``-``name eksctlinstanceprofile`` `
+aws iam create-instance-profile --instance-profile-name eksctlinstanceprofile 
 
-`aws iam add``-``role``-``to``-``instance``-``profile ``--``instance``-``profile``-``name eksctlinstanceprofile ``\`
-`--``role``-``name EKSCTLRole`
+aws iam add-role-to-instance-profile --instance-profile-name eksctlinstanceprofile \
+--role-name EKSCTLRole
 ```
 
 
