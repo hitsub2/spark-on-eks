@@ -1037,7 +1037,6 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
   --conf spark.kubernetes.executor.node.selector.karpenter.sh/nodepool=executor-graviton \
   --conf spark.hadoop.fs.s3a.endpoint=s3.amazonaws.com \
   --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
-  --conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider \
   --conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.InstanceProfileCredentialsProvider \
   --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa \
   s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
