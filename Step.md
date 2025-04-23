@@ -887,6 +887,7 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
 
 #### Split spark driver and executor with different nodepool
 
+Driver nodepool
 ```
 cat <<EOF | envsubst | kubectl apply -f -
 apiVersion: karpenter.sh/v1
@@ -922,9 +923,10 @@ spec:
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 1m
+EOF
 ```
 
-
+Executor nodepool
 ```
 cat <<EOF | envsubst | kubectl apply -f -
 apiVersion: karpenter.sh/v1
@@ -960,6 +962,7 @@ spec:
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 1m
+EOF
 ```
 
 
