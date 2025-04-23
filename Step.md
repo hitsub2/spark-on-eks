@@ -880,6 +880,7 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
   --conf spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider \
   --conf spark.hadoop.fs.s3a.access.key=$(aws configure get aws_access_key_id) \
   --conf spark.hadoop.fs.s3a.secret.key=$(aws configure get aws_secret_access_key) \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa \
   s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
 ```
 
