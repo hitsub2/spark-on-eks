@@ -2,7 +2,8 @@
 
 ## Architecture
 
-[Image: Image.jpg]
+<img width="912" alt="image" src="https://github.com/user-attachments/assets/32f91f14-b5fe-4e07-a18a-337808ff5d7b" />
+
 ## Environment
 
 ### Infrastructure
