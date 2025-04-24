@@ -359,6 +359,8 @@ curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARP
 
 #### Attach EKSCTLRole to the ec2 instance(where eksctl is executed)
 
+Steps not display
+
 ### Create Karpenter required role, sqs, and eventbridge
 
 #### Set environment
