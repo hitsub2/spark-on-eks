@@ -1045,7 +1045,7 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
 
 
 
-spark job with IAM role for service account
+##### spark job with IAM role for service account
 
 
 create IAM Role for service account 
@@ -1123,7 +1123,6 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
   --conf spark.kubernetes.authenticate.executor.serviceAccountName=spark-sa-irsa \
   s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
 
-
 ```
 
 ### Spark operator
@@ -1147,7 +1146,6 @@ helm install spark-operator spark-operator/spark-operator \
 ```
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/heads/master/examples/spark-pi.yaml
 ```
-
 
 
 
