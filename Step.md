@@ -1043,6 +1043,89 @@ spark-3.5.5-bin-hadoop3/bin/spark-submit \
   s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
 ```
 
+
+
+spark job with IAM role for service account
+
+
+create IAM Role for service account 
+
+
+```
+eksctl utils associate-iam-oidc-provider --cluster $CLUSTER_NAME --approve
+```
+Create service account the associate with IAM Role
+
+```
+eksctl create iamserviceaccount --name spark-sa-irsa --namespace $SPARK_NAMESPACE --cluster $CLUSTER_NAME --role-name spark-role \
+    --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --approve
+```
+
+Grant the service account with proper K8s permissions
+
+```
+cat > spark-sa-irsa.yaml << EOL
+---
+# Role with permissions to create and list pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-admin-role
+  namespace: ${SPARK_NAMESPACE}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "configmaps"]
+  verbs: ["create", "list", "get", "watch"]
+---
+# RoleBinding to bind the service account to the role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-admin-binding
+  namespace: ${SPARK_NAMESPACE}
+subjects:
+- kind: ServiceAccount
+  name: spark-sa-irsa
+  namespace: ${SPARK_NAMESPACE}
+roleRef:
+  kind: Role
+  name: pod-admin-role
+  apiGroup: rbac.authorization.k8s.io
+
+```
+Create the rolebinding
+```
+kubectl apply -f spark-sa-irsa.yaml
+```
+
+Submit spark jobs with IRSA
+```
+spark-3.5.5-bin-hadoop3/bin/spark-submit \
+  --master ${KUBERNETES_MASTER} \
+  --deploy-mode cluster \
+  --name spark-s3-reader \
+  --conf spark.kubernetes.container.image=${SPARK_IMAGE} \
+  --conf spark.kubernetes.namespace=${SPARK_NAMESPACE} \
+  --conf spark.kubernetes.driver.request.cores=1 \
+  --conf spark.kubernetes.driver.limit.cores=1 \
+  --conf spark.kubernetes.executor.request.cores=1 \
+  --conf spark.kubernetes.executor.limit.cores=1 \
+  --conf spark.driver.memory=2g \
+  --conf spark.executor.memory=2g \
+  --conf spark.executor.instances=2 \
+  --conf spark.kubernetes.driver.node.selector.karpenter.sh/nodepool=driver-graviton \
+  --conf spark.kubernetes.executor.node.selector.karpenter.sh/nodepool=executor-graviton \
+  --conf spark.hadoop.fs.s3a.endpoint=s3.amazonaws.com \
+  --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider=software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider \
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider.mapping="com.amazonaws.auth.WebIdentityTokenCredentialsProvider=software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider" \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa-irsa \
+  --conf spark.kubernetes.authenticate.executor.serviceAccountName=spark-sa-irsa \
+  s3a://${S3_BUCKET}/scripts/simple_s3_spark_job.py
+
+
+```
+
 ### Spark operator
 
 #### install spark operator
@@ -1070,24 +1153,6 @@ kubectl apply -f https://raw.githubusercontent.com/kubeflow/spark-operator/refs/
 
 ## Appendix
 
-### IAM Role for Service Account
 
-
-spark job with IAM role for service account
-
-
-create IAM Role for service account 
-
-
-```
-eksctl utils associate-iam-oidc-provider --cluster $CLUSTER_NAME --approve
-```
-
-
-
-```
-eksctl create iamserviceaccount --name spark-sa --namespace $SPARK_NAMESPACE --cluster $CLUSTER_NAME --role-name spark-role \
-    --attach-policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --approve
-```
 
 
