@@ -28,13 +28,17 @@ Where the following command will be executed
 **The following steps require an IAM role that can create IAM role. It will create:**
 
 * IAM role for eksctl
-* Karpenter SQS
+* Karpenter SQS used by Karpenter to retrieve spot event and EC2 event
+* Event Bridge Rule for monitoring Spot Event
 * Karpenter Node Role
 * Karpenter Controller Policy
 
 ### Setting environment
 
 Please change ACCOUNT_ID, CLUSTER_NAME, AWS_REGION accordingly.
+
+> [!IMPORTANT] 
+>Attention: use a unique name for CLUSTER_NAME if mulitple persons operate in a same account.
 
 ```
 export ACCOUNT_ID=724853865853
@@ -46,6 +50,7 @@ export CLUSTER_NAME="spark-on-eks-demo"
 
 #### Create New policy file
 
+IAM policy to call EKS api and System manager api
 ```
 cat > eksallaccess.policy <<EOF
 {
@@ -119,7 +124,12 @@ The above command successful response
 
 ### Create a new policy limitedIAMACCESS
 
-We will use this role with eksctl tool to create eks cluster.
+We will use this role with eksctl tool to create eks cluster. eksctl will create:
+
+* a new VPC(optional)
+* IAM role
+* nodegroups-EC2
+* etc.
 
 #### Create New policy file
 
@@ -342,6 +352,13 @@ aws iam add-role-to-instance-profile --instance-profile-name eksctlinstanceprofi
 
 #### Create IAM role, SQS, event bridge rules for karpenter
 
+The following cloudformation will create:
+
+* Karpenter SQS used by Karpenter to retrieve spot event and EC2 event
+* Event Bridge Rule for monitoring Spot Event
+* Karpenter Node Role
+* Karpenter Controller Policy
+
 ```
 export TEMPOUT="$(mktemp)"
 export K8S_VERSION="1.32"
@@ -359,24 +376,28 @@ curl -fsSL https://raw.githubusercontent.com/aws/karpenter-provider-aws/v"${KARP
 
 #### Attach EKSCTLRole to the ec2 instance(where eksctl is executed)
 
-Steps not display
+Steps not display, you attach the new created iam role on AWS console
 
 ### Create Karpenter required role, sqs, and eventbridge
 
 #### Set environment
+
+Suggest to use the latest version of Karpenter.
 
 ```
 export KARPENTER_NAMESPACE="kube-system"
 export KARPENTER_VERSION="1.4.0"
 export K8S_VERSION="1.32"
 export AWS_PARTITION="aws"
-export CLUSTER_NAME="spark-on-eks-demo"
 export AWS_DEFAULT_REGION="us-east-1"
 export TEMPOUT="$(mktemp)"
 export ALIAS_VERSION="$(aws ssm get-parameter --name "/aws/service/eks/optimized-ami/${K8S_VERSION}/amazon-linux-2023/x86_64/standard/recommended/image_id" --query Parameter.Value | xargs aws ec2 describe-images --query 'Images[0].Name' --image-ids | sed -r 's/^.*(v[[:digit:]]+).*$/\1/')"
 ```
 
 #### Install eksctl
+
+eksctl - The official CLI for Amazon EKS
+eksctl is a simple CLI tool for creating and managing clusters on EKS - Amazon's managed Kubernetes service for EC2.
 
 ```
 # for ARM systems, set ARCH to: `arm64`, `armv6` or `armv7`
@@ -394,6 +415,8 @@ sudo mv /tmp/eksctl /usr/local/bin
 ```
 
 #### Check eksctl version
+
+eksctl version provide the latest EKS version support.
 
 ```
 eksctl version
@@ -440,7 +463,8 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 ### Prepare eksctl yaml files
 
-eksctl leverage yaml files to create eks cluster which is more production-ready than aws console.
+eksctl leverage yaml files to create eks cluster which is more production-ready than aws console. In this workshop, we will use the existing VPC, 
+if you do not provide VPC info in the yaml, eksctl will create a new VPC for you. More examples: https://github.com/eksctl-io/eksctl/tree/main/examples
 
 The yaml need to be changed accordingly:
 
@@ -508,12 +532,13 @@ EOF
 
 #### Creat the cluster
 
+eksctl will render some cloudformation stacks based on your yaml, you can check the Cloudformation status.
+
 It will take about 20 minutes to create the cluster.
 
 ```
 eksctl create cluster -f eksctl_cluster.yaml
 ```
-
 
 
 ## Install Karpenter
